@@ -28,7 +28,7 @@ st.title("🤖 AI-Driven Competitive Intelligence Tracker")
 st.markdown("""
     <style>
     body {
-        background-color: #f0f8ff; /* light blue */
+        background-color: #f0f8ff; /* black */
     }
     </style>
     """, unsafe_allow_html=True
