@@ -22,8 +22,8 @@ def fetch_data():
 
 df = fetch_data()
 
-# 🧠 Title
-st.title("🧠 AI-Driven Competitive Intelligence Tracker")
+# 🤖 Title
+st.title("🤖 AI-Driven Competitive Intelligence Tracker")
 
 # 📊 Sidebar Filters
 companies = df['Company'].unique().tolist()
