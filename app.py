@@ -25,6 +25,15 @@ df = fetch_data()
 # 🤖 Title
 st.title("🤖 AI-Driven Competitive Intelligence Tracker")
 
+st.markdown("""
+    <style>
+    body {
+        background-color: #f0f8ff; /* light blue */
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+
 # 📊 Sidebar Filters
 companies = df['Company'].unique().tolist()
 selected_companies = st.sidebar.multiselect("Select Companies", companies, default=companies)
