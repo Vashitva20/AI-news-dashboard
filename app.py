@@ -45,7 +45,7 @@ for idx, row in filtered_df.iterrows():
     - 📰 **Source:** {row['source']}
     - 📅 **Published At:** {row['published_at'].strftime('%Y-%m-%d %H:%M')}
     - 😊 **Sentiment Score:** `{row['sentiment_score']}`
-    - 🧠 **Top Keywords:** {row['top_keywords']}
+    - 🔑 **Top Keywords:** {row['top_keywords']}
     - 🌐 [Read More]({row['url']})
     ---
     """)
