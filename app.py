@@ -33,7 +33,7 @@ selected_companies = st.sidebar.multiselect("Select Companies", companies, defau
 filtered_df = df[df["Company"].isin(selected_companies)]
 
 # 📈 Trend Section
-st.subheader("📈 Sentiment Trend Over Time (Coming Soon)")
+st.subheader("📈 Sentiment Trend Over Time (Coming Soon...)")
 
 # 📋 News Section
 st.subheader("📰 Latest News")
