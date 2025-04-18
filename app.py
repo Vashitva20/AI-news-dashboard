@@ -23,7 +23,7 @@ def fetch_data():
 df = fetch_data()
 
 # 🤖 Title
-st.title("🤖 AI-Driven Competitive Intelligence Tracker")
+st.title("🤖 AI-Driven Competitive Intelligence Tracker")           
 
 # 📊 Sidebar Filters
 companies = df['Company'].unique().tolist()
@@ -38,11 +38,12 @@ st.subheader("📈 Sentiment Trend Over Time (Coming Soon...)")
 # 📋 News Section
 st.subheader("📰 Latest News")
 
-#refresh buttom
-if st.button("🔄 Refresh Data"):
-    st.cache_data.clear()  # Clears cached result
+# 🔄 Refresh Button in Sidebar
+if st.sidebar.button("🔄 Refresh Data"):
+    st.cache_data.clear()  # Clear the cached data
+    st.experimental_rerun()  # Rerun the script to fetch fresh data
 
-df = fetch_data()
+
 
 for idx, row in filtered_df.iterrows():
     st.markdown(f"""
