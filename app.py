@@ -38,6 +38,12 @@ st.subheader("📈 Sentiment Trend Over Time (Coming Soon...)")
 # 📋 News Section
 st.subheader("📰 Latest News")
 
+#refresh buttom
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()  # Clears cached result
+
+df = fetch_data()
+
 for idx, row in filtered_df.iterrows():
     st.markdown(f"""
     #### {row['title']}
