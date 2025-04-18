@@ -41,7 +41,7 @@ st.subheader("📰 Latest News")
 # 🔄 Refresh Button in Sidebar
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()  # Clear the cached data
-    st.experimental_rerun()  # Rerun the script to fetch fresh data
+df = fetch_data()
 
 
 
