@@ -1,0 +1,197 @@
+# 📦 Install required packages
+!pip install newsapi-python nltk spacy rake-nltk wordcloud supabase
+!pip install newsapi-python nltk spacy rake-nltk wordcloud supabase fuzzywuzzy
+!pip install gnews
+!pip install requests
+# ✅ Download NLTK and spaCy resources
+import nltk
+nltk.download('vader_lexicon')
+nltk.download('stopwords')
+nltk.download('punkt')
+nltk.download('punkt_tab')
+!python -m spacy download en_core_web_sm
+
+# 🔧 Imports
+import re
+import pandas as pd
+import spacy
+from datetime import datetime, timedelta
+from newsapi import NewsApiClient
+from gnews import GNews
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from rake_nltk import Rake
+from wordcloud import WordCloud
+from fuzzywuzzy import fuzz
+from supabase import create_client, Client
+import requests
+
+
+
+GNEWS_API_KEY = "7ae58b911c154d14aae1c9e779b46f58"
+news_api_key = "21386679f7a84bdbbdb3487d926ecadb"
+
+# 🔑 Your API Keys
+#newsapi = NewsApiClient(api_key='21386679f7a84bdbbdb3487d926ecadb')
+#news = GNews()
+
+url = 'https://cakchguemrmvpizmqdka.supabase.co'
+key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNha2NoZ3VlbXJtdnBpem1xZGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NDE1NDYsImV4cCI6MjA2MDExNzU0Nn0.aT7Ssu9b--fW39VPhl4fwE2cxSvlw7teZnoFRix4qCE'
+supabase: Client = create_client(url, key)
+
+# 🏢 Companies to track
+companies = [
+    "Langchain","Razorpay", "Google","Nykaa", "Zepto", "Freshworks",
+    "Chargebee", "Rapido", "Fractal Analytics", "BlackRock", "OpenAI"
+]
+
+# Time Range
+from_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+to_date = datetime.now().strftime('%Y-%m-%d')
+
+#  NLP Setup
+nlp = spacy.load("en_core_web_sm")
+sia = SentimentIntensityAnalyzer()
+rake = Rake()
+
+# Clean Text Function
+def clean_text(text):
+    text = re.sub(r"http\S+", "", text)                     # Remove URLs
+    text = re.sub(r"#", "", text)                           # Remove hashtags
+    text = re.sub(r"[^A-Za-z0-9\s.,!?'-]", "", text)        # Remove unwanted characters
+    text = re.sub(r"\s+", " ", text).strip()                # Remove extra whitespace
+    return text
+
+def is_similar_article(new_text, existing_texts, threshold=90):
+    for text in existing_texts:
+        if fuzz.ratio(new_text.lower(), text.lower()) >= threshold:
+            return True
+    return False
+
+# Fetch + Analyze + Upload News
+all_data = []
+
+
+
+def fetch_gnews_articles(company, from_date, to_date, language='en', sort_by='relevance', max_results=10):
+    url = f"https://gnews.io/api/v4/search"
+    api_key = "7ae58b911c154d14aae1c9e779b46f58"
+    params = {
+        'q': company,
+        'lang': language,
+        'from': from_date,
+        'to': to_date,
+        'sortby': sort_by,
+        'max': max_results,
+        'token': api_key
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        return response.json().get('articles', [])
+    else:
+        print(f"GNews API error: {response.status_code} - {response.text}")
+        return []
+
+def fetch_newsapi_articles(company, from_date, to_date, language='en', sort_by='relevancy', page_size=10):
+    url = "https://newsapi.org/v2/everything"
+    api_key = "21386679f7a84bdbbdb3487d926ecadb"
+    params = {
+        'q': company,
+        'from': from_date,
+        'to': to_date,
+        'language': language,
+        'sortBy': sort_by,
+        'pageSize': page_size,
+        'apiKey': api_key
+    }
+
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json().get('articles', [])
+    else:
+        print(f"Failed to fetch articles: {response.status_code} - {response.text}")
+        return []
+
+
+existing_titles = []
+
+for company in companies:
+    print(f"Fetching news for: {company}")
+    articles = fetch_gnews_articles(company, from_date, to_date) + fetch_newsapi_articles(company, from_date, to_date)
+
+
+
+    for article in articles:
+        # Cleaned and combined text
+        text = clean_text(article['title'] + " " + (article['description'] or ""))
+        if is_similar_article(text, existing_titles):
+            print(f"⏭ Skipping near-duplicate article for {company}: {article['title']}")
+            continue
+        existing_titles.append(text)
+        sentiment = sia.polarity_scores(text)['compound']
+        rake.extract_keywords_from_text(text)
+        keywords = rake.get_ranked_phrases()
+
+        doc = nlp(text)
+        entities = [ent.text for ent in doc.ents if ent.label_ in ['ORG', 'PRODUCT', 'GPE']]
+
+        # Match company names
+        text_lower = text.lower()
+        keyword_matches = [comp for comp in companies if comp.lower() in text_lower]
+
+        fuzzy_matches = []
+        for ent in entities:
+            for comp in companies:
+                if fuzz.ratio(ent.lower(), comp.lower()) > 85:
+                    fuzzy_matches.append(comp)
+
+        all_company_mentions = list(set(keyword_matches + fuzzy_matches))
+
+        # if company == "CRED" and "CRED" not in all_company_mentions:
+        #     print(f"⏭ Skipping likely irrelevant CRED article: {article['title']}")
+        #     continue
+
+
+        # Duplicate check using URL
+        existing = supabase.table("news_insights").select("id").eq("url", article['url']).execute()
+        if existing.data:
+            print(f"⏭ Skipping duplicate article for {company}")
+            continue
+
+
+
+        # Store in DataFrame
+        all_data.append({
+            "Company": company,
+            "matched_companies": ", ".join(all_company_mentions),
+            "title": article['title'],
+            "published_at": article['publishedAt'],
+            "source": article['source']['name'],
+            "sentiment_score": sentiment,
+            "top_keywords": ", ".join(keywords[:5]),
+            "entities": ", ".join(entities),
+            "url": article['url']
+        })
+
+        # Upload to Supabase
+        supabase.table("news_insights").insert({
+            "Company": company,
+            "matched_companies": ", ".join(all_company_mentions),
+            "title": article['title'],
+            "published_at": article['publishedAt'],
+            "source": article['source']['name'],
+            "sentiment_score": sentiment,
+            "top_keywords": ", ".join(keywords[:5]),
+            "entities": ", ".join(entities),
+            "url": article['url']
+        }).execute()
+
+# 🧾 Final DataFrame
+df = pd.DataFrame(all_data)
+if not df.empty and 'published_at' in df.columns:
+    df['published_at'] = pd.to_datetime(df['published_at'], errors='coerce')
+    df.sort_values(by='published_at', ascending=False, inplace=True)
+    display(df.head(10))
+else:
+    print("No new articles were fetched or valid 'published_at' data not found.")
